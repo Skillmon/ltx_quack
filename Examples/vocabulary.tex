@@ -1,0 +1,792 @@
+\documentclass[]{article}
+
+\IfFileExists{pgfparser.sty}
+  {\usepackage{pgfparser}}
+  {%
+    \usepackage{pgf}%
+    \usepgfmodule{parser}%
+  }
+
+\makeatletter
+\newcommand*\kana@ifempty[1]%>>=
+  {%
+    \if\relax\detokenize{#1}\relax
+      \kana@true
+    \fi
+    \kana@false
+  }%=<<
+\long\def\kana@true\fi#1#2#3{\fi#2}
+\long\def\kana@false#1#2{#2}
+\newcommand*\kanadef{\@ifstar\kanadef@s\kanadef@n}
+\newcommand*\kanadef@s[1]%>>=
+  {%
+    \kana@ifempty{#1}{}{\kanadef@step#1\kana@stop{}}%
+  }%=<<
+\newcommand*\kanadef@n[2]%>>=
+  {%
+    \kana@ifempty{#1}{}
+      {\kanadef@step#1\kana@stop{}{\symbol{#2}\pgfparserswitch{initial}}}%
+  }%=<<
+\def\kanadef@step#1#2\kana@stop#3%>>=
+  {%
+    \kana@ifempty{#2}
+      {%
+        \kana@ifempty{#3}
+          {\pgfparserdef{kana}{initial}#1}
+          {\pgfparserdef{kana}{#3}#1}%
+      }
+      {%
+        \kana@ifempty{#3}
+          {\pgfparserdef{kana}{initial}#1}
+          {\pgfparserdef{kana}{#3}#1}%
+        {\pgfparserswitch{#3#1}}%
+        \kanadef@step#2\kana@stop{#3#1}%
+      }%
+  }%=<<
+\DeclareFontFamily{U}{kana}{}
+\newcommand*\kana@DeclareFontShape{\DeclareFontShape{U}{kana}}
+\kana@DeclareFontShape{m}{n}  {<->ipxm-r-u30}{}
+\kana@DeclareFontShape{m}{sl} {<->ipxm-ro-u30}{}
+\kana@DeclareFontShape{m}{it} {<->ssub* kana/m/sl}{}
+\kana@DeclareFontShape{m}{sc} {<->ssub* kana/m/n}{}
+\kana@DeclareFontShape{b}{n}  {<->ssub* kana/m/n}{}
+\kana@DeclareFontShape{b}{sc} {<->ssub* kana/m/n}{}
+\kana@DeclareFontShape{b}{it} {<->ssub* kana/m/sl}{}
+\kana@DeclareFontShape{bx}{n} {<->ssub* kana/m/n}{}
+\kana@DeclareFontShape{bx}{sc}{<->ssub* kana/m/n}{}
+\kana@DeclareFontShape{bx}{it}{<->ssub* kana/m/sl}{}
+%\DeclareFontShape{U}{kana}{m}{n}{<->gbsnu30}{}
+\DeclareRobustCommand*\kana%>>=
+  {%
+    \fontencoding{U}\fontfamily{kana}\fontseries{m}\selectfont
+  }%=<<
+\newcommand*\kana@stop{\kana@stop}
+\newcommand*\kana@def[1][initial]%>>=
+  {%
+    \pgfparserdef{kana}{#1}%
+  }%=<<
+\newcommand*\kana@defswitched{\@ifstar\kana@defswitched@s\kana@defswitched@n}
+\DeclareRobustCommand*\romaji%>>=
+  {%
+    \begingroup
+    \edef\kana@restorefont
+      {\noexpand\usefont{\f@encoding}{\f@family}{\f@series}{\f@shape}}%
+    \kana
+    \@ifstar{\def\kana@space{\phantom{\symbol{66}}\hskip0pt}\romaji@}\romaji@
+  }%=<<
+\DeclareRobustCommand*\romaji@nest%>>=
+  {%
+    \begingroup\kana\romaji@
+  }%=<<
+\DeclareRobustCommand*\romaji@[1]{\pgfparserparse{kana}#1\kana@stop}
+
+\pgfparserdefunknown{kana}{all}%>>=
+  {%
+    \PackageError{kana}
+      {%
+        No rule for parser 'kana' in state '\pgfparserstate' for
+        '\meaning\pgfparsertoken'. Ignoring token and gobbling remaining string%
+      }
+      {}%
+    \kana@gobble
+  }%=<<
+\newcommand*\kana@unexpectedspace%>>=
+  {%
+    \PackageError{kana}
+      {%
+        Unexpected blank space encountered. Ignoring%
+      }
+      {}%
+  }%=<<
+\long\def\kana@gobble#1\kana@stop{\endgroup}
+\pgfparserset{kana/silent=true}
+\pgfparserdeffinal{kana}{\endgroup}
+\kana@def \kana@stop{\pgfparserswitch{final}}
+\kana@def,{\symbol{1}\kana@space}
+\kana@def.{\symbol{2}\kana@space}
+\kana@def-{\symbol{252}}
+\kana@def"{\pgfparserswitch{quotes}}
+\kana@def[all]'{\pgfparserswitch{initial}}
+\kana@def[n]'{\symbol{147}\pgfparserswitch{initial}}
+\kana@def[N]'{\symbol{243}\pgfparserswitch{initial}}
+\kana@def[quotes]'{\symbol{13}\pgfparserswitch{initial}}
+\newcommand*\kana@space{\hskip0pt}
+\kana@def[all]{blank space}{\kana@unexpectedspace}
+\kana@def{blank space}{\kana@space}
+\kana@def[quotes]{blank space}{\symbol{13}\kana@space\pgfparserswitch{initial}}
+\kana@def[n]{blank space}{\symbol{147}\kana@space\pgfparserswitch{initial}}
+\kana@def[N]{blank space}{\symbol{243}\kana@space\pgfparserswitch{initial}}
+\kana@def[quotes].{\symbol{13}\pgfparserswitch{initial}\pgfparserreinsert}
+\pgfparserlet{kana}{quotes},.
+\kana@def[quotes]\kana@stop{\symbol{13}\pgfparserswitch{final}}
+\pgfparserdefunknown{kana}{quotes}%>>=
+  {%
+    \symbol{12}\pgfparserswitch{initial}\pgfparserreinsert
+  }%=<<
+
+% font macros >>=
+\newcommand*\kanadefnested[1]{\kana@def#1[m]{#1{\romaji@nest{##1}}}}
+\kanadefnested\textrm
+\kanadefnested\textsf
+\kanadefnested\texttt
+\kanadefnested\textmd
+\kanadefnested\textbf
+\kanadefnested\textup
+\kanadefnested\textit
+\kanadefnested\textsl
+\kanadefnested\textsc
+\kana@def\romaji[m]{\begingroup\kana@restorefont#1\endgroup}
+% =<<
+
+% hiragana >>=
+\newcommand*\kana@defswitch[1]%>>=
+  {%
+    \def\kana@defswitched@s##1##2{\pgfparserdef{kana}{#1}##1{##2}}%
+    \def\kana@defswitched@n##1##2%
+      {\pgfparserdef{kana}{#1}##1{##2\pgfparserswitch{initial}}}%
+    \kana@defswitched@s #1{\symbol{99}}%
+    \pgfparserdef{kana}{n}#1{\symbol{147}\pgfparserswitch{#1}}%
+    \pgfparserdef{kana}{N}#1{\symbol{243}\pgfparserswitch{#1}}%
+    \pgfparserdef{kana}{initial}#1{\pgfparserswitch{#1}}%
+  }%=<<
+\newcommand*\kana@defset[6]%>>=
+  {%
+    \kana@defswitch #1%
+    \kana@defswitched a{\symbol{#2}}%
+    \kana@defswitched i{\symbol{#3}}%
+    \kana@defswitched u{\symbol{#4}}%
+    \kana@defswitched e{\symbol{#5}}%
+    \kana@defswitched o{\symbol{#6}}%
+  }%=<<
+\newcommand*\kana@defset@di[7]%>>=
+  {%
+    \kana@defset #1{#2}{#3}{#4}{#5}{#6}%
+    \kana@defswitched*y{\symbol{#7}\pgfparserswitch{digraph}}%
+  }%=<<
+% aiueo >>=
+\kana@def a{\symbol{66}}
+\kana@def i{\symbol{68}}
+\kana@def u{\symbol{70}}
+\kana@def e{\symbol{72}}
+\kana@def o{\symbol{74}}
+% =<<
+% k >>=
+\kana@defset@di k{75}{77}{79}{81}{83}{77}
+% =<<
+% g >>=
+\kana@defset@di g{76}{78}{80}{82}{84}{78}
+% =<<
+% s >>=
+\kana@defswitch s
+\kana@defswitched a{\symbol{85}}
+\kana@defswitched u{\symbol{89}}
+\kana@defswitched e{\symbol{91}}
+\kana@defswitched o{\symbol{93}}
+\kana@defswitched*h{\symbol{87}\pgfparserswitch{sh}}
+\kana@def[sh]i{\pgfparserswitch{initial}}
+\kana@def[sh]a{\symbol{131}\pgfparserswitch{initial}}
+\kana@def[sh]u{\symbol{133}\pgfparserswitch{initial}}
+\kana@def[sh]o{\symbol{135}\pgfparserswitch{initial}}
+% =<<
+% z >>=
+\kana@defswitch z
+\kana@defswitched a{\symbol{86}}
+\kana@defswitched u{\symbol{90}}
+\kana@defswitched e{\symbol{92}}
+\kana@defswitched o{\symbol{94}}
+\kana@defswitch j
+\kana@defswitched i{\symbol{88}}
+\kana@defswitched a{\symbol{88}\symbol{131}}
+\kana@defswitched u{\symbol{88}\symbol{133}}
+\kana@defswitched o{\symbol{88}\symbol{135}}
+% =<<
+% t >>=
+\kana@defswitch t
+\kana@defswitched a{\symbol{95}}
+\kana@defswitched e{\symbol{102}}
+\kana@defswitched o{\symbol{104}}
+\kana@defswitched*s{\pgfparserswitch{ts}}
+\kana@def[ts]u{\symbol{100}\pgfparserswitch{initial}}
+\kana@defswitch c
+\kana@defswitched*h{\symbol{97}\pgfparserswitch{ch}}
+\kana@def[ch]i{\pgfparserswitch{initial}}
+\kana@def[ch]a{\symbol{131}\pgfparserswitch{initial}}
+\kana@def[ch]u{\symbol{133}\pgfparserswitch{initial}}
+\kana@def[ch]o{\symbol{135}\pgfparserswitch{initial}}
+% =<<
+% d >>=
+\kana@defswitch d
+\kana@defswitched a{\symbol{96}}
+\kana@defswitched e{\symbol{103}}
+\kana@defswitched o{\symbol{105}}
+% =<<
+% n >>=
+\kana@defset@di n{106}{107}{108}{109}{110}{107}
+\kana@defswitched*\kana@stop{\symbol{147}\pgfparserswitch{final}}
+% =<<
+% h >>=
+\kana@defswitch h
+\kana@defswitched a{\symbol{111}}
+\kana@defswitched i{\symbol{114}}
+\kana@defswitched e{\symbol{120}}
+\kana@defswitched o{\symbol{123}}
+\kana@defswitched*y{\symbol{114}\pgfparserswitch{digraph}}
+\kana@defswitch f
+\kana@defswitched u{\symbol{117}}
+% =<<
+% b >>=
+\kana@defset@di b{112}{115}{118}{121}{124}{115}
+% =<<
+% p >>=
+\kana@defset@di p{113}{116}{119}{122}{125}{116}
+% =<<
+% m >>=
+\kana@defset@di m{126}{127}{128}{129}{130}{127}
+% =<<
+% y >>=
+\kana@def y{\pgfparserswitch{y}}
+\kana@def[y]y{\symbol{99}}
+\kana@def[y]a{\symbol{132}\pgfparserswitch{initial}}
+\kana@def[y]u{\symbol{134}\pgfparserswitch{initial}}
+\kana@def[y]o{\symbol{136}\pgfparserswitch{initial}}
+% =<<
+% r >>=
+\kana@defset@di r{137}{138}{139}{140}{141}{138}
+% =<<
+% w >>=
+\kana@defswitch w
+\kana@defswitched a{\symbol{143}}
+\kana@defswitched o{\symbol{146}}
+% =<<
+% digraph endings >>=
+\kana@def[digraph]a{\symbol{131}\pgfparserswitch{initial}}
+\kana@def[digraph]u{\symbol{133}\pgfparserswitch{initial}}
+\kana@def[digraph]o{\symbol{135}\pgfparserswitch{initial}}
+% =<<
+% =<<
+% katakana >>=
+\renewcommand*\kana@defswitch[1]%>>=
+  {%
+    \def\kana@defswitched@s##1##2{\pgfparserdef{kana}{#1}##1{##2}}%
+    \def\kana@defswitched@n##1##2%
+      {\pgfparserdef{kana}{#1}##1{##2\pgfparserswitch{initial}}}%
+    \kana@defswitched@s #1{\symbol{195}}%
+    \pgfparserdef{kana}{n}#1{\symbol{147}\pgfparserswitch{#1}}%
+    \pgfparserdef{kana}{N}#1{\symbol{243}\pgfparserswitch{#1}}%
+    \pgfparserdef{kana}{initial}#1{\pgfparserswitch{#1}}%
+  }%=<<
+\renewcommand*\kana@defset[6]%>>=
+  {%
+    \kana@defswitch #1%
+    \kana@defswitched*A{\symbol{#2}\pgfparserswitch{afterA}}%
+    \kana@defswitched*I{\symbol{#3}\pgfparserswitch{afterI}}%
+    \kana@defswitched*U{\symbol{#4}\pgfparserswitch{afterU}}%
+    \kana@defswitched*E{\symbol{#5}\pgfparserswitch{afterE}}%
+    \kana@defswitched*O{\symbol{#6}\pgfparserswitch{afterO}}%
+  }%=<<
+% handle katakana doubled vowels >>=
+\kana@def[afterA]A{\symbol{252}\pgfparserswitch{initial}}
+\kana@def[afterI]I{\symbol{252}\pgfparserswitch{initial}}
+\kana@def[afterU]U{\symbol{252}\pgfparserswitch{initial}}
+\kana@def[afterE]E{\symbol{252}\pgfparserswitch{initial}}
+\kana@def[afterO]O{\symbol{252}\pgfparserswitch{initial}}
+\pgfparserdefunknown{kana}{afterA}{\pgfparserswitch{initial}\pgfparserreinsert}
+\pgfparserdefunknown{kana}{afterI}{\pgfparserswitch{initial}\pgfparserreinsert}
+\pgfparserdefunknown{kana}{afterU}{\pgfparserswitch{initial}\pgfparserreinsert}
+\pgfparserdefunknown{kana}{afterE}{\pgfparserswitch{initial}\pgfparserreinsert}
+\pgfparserdefunknown{kana}{afterO}{\pgfparserswitch{initial}\pgfparserreinsert}
+% =<<
+\renewcommand*\kana@defset@di[7]%>>=
+  {%
+    \kana@defset #1{#2}{#3}{#4}{#5}{#6}%
+    \kana@defswitched*Y{\symbol{#7}\pgfparserswitch{DIGRAPH}}%
+  }%=<<
+% aiueo >>=
+\kana@def A{\symbol{162}\pgfparserswitch{afterA}}
+\kana@def I{\symbol{164}\pgfparserswitch{afterI}}
+\kana@def U{\symbol{166}\pgfparserswitch{afterU}}
+\kana@def E{\symbol{168}\pgfparserswitch{afterE}}
+\kana@def O{\symbol{170}\pgfparserswitch{afterO}}
+% =<<
+% k >>=
+\kana@defset@di K{171}{173}{175}{177}{179}{173}
+% =<<
+% g >>=
+\kana@defset@di G{172}{174}{176}{178}{180}{174}
+% =<<
+% s >>=
+\kana@defswitch S
+\kana@defswitched*A{\symbol{181}\pgfparserswitch{afterA}}
+\kana@defswitched*U{\symbol{185}\pgfparserswitch{afterU}}
+\kana@defswitched*E{\symbol{187}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{189}\pgfparserswitch{afterO}}
+\kana@defswitched*H{\symbol{183}\pgfparserswitch{SH}}
+\kana@def[SH]I{\pgfparserswitch{afterI}}
+\kana@def[SH]A{\symbol{227}\pgfparserswitch{afterA}}
+\kana@def[SH]U{\symbol{229}\pgfparserswitch{afterU}}
+\kana@def[SH]O{\symbol{231}\pgfparserswitch{afterO}}
+% =<<
+% z >>=
+\kana@defswitch Z
+\kana@defswitched*A{\symbol{182}\pgfparserswitch{afterA}}
+\kana@defswitched*U{\symbol{186}\pgfparserswitch{afterU}}
+\kana@defswitched*E{\symbol{188}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{190}\pgfparserswitch{afterO}}
+\kana@defswitch J
+\kana@defswitched*I{\symbol{184}\pgfparserswitch{afterI}}
+\kana@defswitched*A{\symbol{184}\symbol{227}\pgfparserswitch{afterA}}
+\kana@defswitched*U{\symbol{184}\symbol{229}\pgfparserswitch{afterU}}
+\kana@defswitched*O{\symbol{184}\symbol{231}\pgfparserswitch{afterO}}
+% =<<
+% t >>=
+\kana@defswitch T
+\kana@defswitched*A{\symbol{191}\pgfparserswitch{afterA}}
+\kana@defswitched*E{\symbol{198}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{200}\pgfparserswitch{afterO}}
+\kana@defswitched*I{\symbol{198}\symbol{163}\pgfparserswitch{afterI}}
+\kana@defswitched*U{\symbol{198}\symbol{165}\pgfparserswitch{afterU}}
+\kana@defswitched*S{\pgfparserswitch{TS}}
+\kana@def[TS]U{\symbol{196}\pgfparserswitch{afterU}}
+\kana@defswitch C
+\kana@defswitched*H{\symbol{193}\pgfparserswitch{CH}}
+\kana@def[CH]I{\pgfparserswitch{afterI}}
+\kana@def[CH]A{\symbol{227}\pgfparserswitch{afterA}}
+\kana@def[CH]U{\symbol{229}\pgfparserswitch{afterU}}
+\kana@def[CH]O{\symbol{231}\pgfparserswitch{afterO}}
+% =<<
+% d >>=
+\kana@defswitch D
+\kana@defswitched*A{\symbol{192}\pgfparserswitch{afterA}}
+\kana@defswitched*E{\symbol{199}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{201}\pgfparserswitch{afterO}}
+\kana@defswitched*I{\symbol{199}\symbol{163}\pgfparserswitch{afterI}}
+\kana@defswitched*U{\symbol{199}\symbol{165}\pgfparserswitch{afterU}}
+% =<<
+% n >>=
+\kana@defset@di N{202}{203}{204}{204}{204}{203}
+\kana@defswitched*\kana@stop{\symbol{243}\pgfparserswitch{final}}
+% =<<
+% h >>=
+\kana@defswitch H
+\kana@defswitched*A{\symbol{207}\pgfparserswitch{afterA}}
+\kana@defswitched*I{\symbol{210}\pgfparserswitch{afterI}}
+\kana@defswitched*E{\symbol{216}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{219}\pgfparserswitch{afterO}}
+\kana@defswitched*Y{\symbol{210}\pgfparserswitch{DIGRAPH}}
+\kana@defswitch F
+\kana@defswitched*U{\symbol{213}\pgfparserswitch{afterU}}
+% =<<
+% b >>=
+\kana@defset@di B{208}{211}{214}{217}{220}{211}
+% =<<
+% p >>=
+\kana@defset@di P{209}{212}{215}{218}{221}{212}
+% =<<
+% m >>=
+\kana@defset@di M{222}{223}{224}{225}{226}{223}
+% =<<
+% y >>=
+\kana@def Y{\pgfparserswitch{Y}}
+\kana@def[Y]Y{\symbol{195}}
+\kana@def[Y]A{\symbol{228}\pgfparserswitch{afterA}}
+\kana@def[Y]U{\symbol{230}\pgfparserswitch{afterU}}
+\kana@def[Y]O{\symbol{232}\pgfparserswitch{afterO}}
+% =<<
+% r >>=
+\kana@defset@di R{233}{234}{235}{236}{237}{234}
+% =<<
+% w >>=
+\kana@defswitch W
+\kana@defswitched*A{\symbol{239}\pgfparserswitch{afterA}}
+\kana@defswitched*I{\symbol{166}\symbol{163}\pgfparserswitch{afterI}}
+\kana@defswitched*E{\symbol{166}\symbol{167}\pgfparserswitch{afterE}}
+\kana@defswitched*O{\symbol{242}\pgfparserswitch{afterO}}
+% =<<
+% digraph endings >>=
+\kana@def[DIGRAPH]A{\symbol{227}\pgfparserswitch{afterA}}
+\kana@def[DIGRAPH]U{\symbol{229}\pgfparserswitch{afterU}}
+\kana@def[DIGRAPH]O{\symbol{231}\pgfparserswitch{afterO}}
+% =<<
+% =<<
+% specials >>=
+\kana@def:{\pgfparserswitch{:}}
+\kana@def[n]:{\symbol{147}\pgfparserswitch{:}}
+\kana@def[N]:{\symbol{243}\pgfparserswitch{:}}
+\pgfparserdefunknown{kana}{:}{:\pgfparserswitch{initial}\pgfparserreinsert}
+% hiragana >>=
+% wa and o as particle >>=
+\kana@def[:]w{\pgfparserswitch{:w}}
+\kana@def[:w]a{\symbol{111}\pgfparserswitch{initial}}
+\pgfparserlet{kana}{:w}o[w]o
+\kana@def[:]o{\symbol{146}\pgfparserswitch{initial}}
+% =<<
+% double n treatment >>=
+\kana@def[:]n{\pgfparserswitch{:n}}
+\kana@def[:n]n{\symbol{99}\pgfparserswitch{n}}
+\pgfparserlet{kana}{:n}a[n]a
+\pgfparserlet{kana}{:n}i[n]i
+\pgfparserlet{kana}{:n}u[n]u
+\pgfparserlet{kana}{:n}e[n]e
+\pgfparserlet{kana}{:n}o[n]o
+\pgfparserlet{kana}{:n}y[n]y
+\pgfparserlet{kana}{:n}\kana@stop[n]\kana@stop
+% =<<
+% d-row ji and zu >>=
+\kana@def[:]j{\pgfparserswitch{:j}}
+\kana@def[:j]j{\symbol{99}}
+\kana@def[:j]i{\symbol{98}\pgfparserswitch{initial}}
+\kana@def[:j]a{\symbol{98}\symbol{131}\pgfparserswitch{initial}}
+\kana@def[:j]u{\symbol{98}\symbol{133}\pgfparserswitch{initial}}
+\kana@def[:j]o{\symbol{98}\symbol{135}\pgfparserswitch{initial}}
+\kana@def[:]z{\pgfparserswitch{:z}}
+\kana@def[:z]z{\symbol{99}}
+\kana@def[:z]u{\symbol{101}\pgfparserswitch{initial}}
+\pgfparserlet{kana}{:z}a[z]a
+\pgfparserlet{kana}{:z}e[z]e
+\pgfparserlet{kana}{:z}o[z]o
+% =<<
+% =<<
+% katakana >>=
+% double n treatment >>=
+\kana@def[:]N{\pgfparserswitch{:N}}
+\kana@def[:N]N{\symbol{195}\pgfparserswitch{N}}
+\pgfparserlet{kana}{:N}A[N]A
+\pgfparserlet{kana}{:N}I[N]I
+\pgfparserlet{kana}{:N}U[N]U
+\pgfparserlet{kana}{:N}E[N]E
+\pgfparserlet{kana}{:N}O[N]O
+\pgfparserlet{kana}{:N}Y[N]Y
+\pgfparserlet{kana}{:N}\kana@stop[N]\kana@stop
+% =<<
+% d-row ji and zu >>=
+\kana@def[:]J{\pgfparserswitch{:J}}
+\kana@def[:J]J{\symbol{195}}
+\kana@def[:J]I{\symbol{194}\pgfparserswitch{afterI}}
+\kana@def[:J]A{\symbol{194}\symbol{227}\pgfparserswitch{afterA}}
+\kana@def[:J]U{\symbol{194}\symbol{229}\pgfparserswitch{afterU}}
+\kana@def[:J]O{\symbol{194}\symbol{231}\pgfparserswitch{afterO}}
+\kana@def[:]Z{\pgfparserswitch{:Z}}
+\kana@def[:Z]Z{\symbol{195}}
+\kana@def[:Z]U{\symbol{197}\pgfparserswitch{afterU}}
+\pgfparserlet{kana}{:Z}A[Z]A
+\pgfparserlet{kana}{:Z}E[Z]E
+\pgfparserlet{kana}{:Z}O[Z]O
+% =<<
+% alternative w >>=
+\kana@def[:]W{\pgfparserswitch{:W}}
+\kana@def[:W]I{\symbol{240}\pgfparserswitch{afterI}}
+\kana@def[:W]E{\symbol{241}\pgfparserswitch{afterE}}
+\pgfparserlet{kana}{:W}A[W]A
+\pgfparserlet{kana}{:W}O[W]O
+% =<<
+% =<<
+% =<<
+\makeatother
+
+
+\usepackage[]{ltablex}
+\usepackage{booktabs}
+\newenvironment{vocables}
+  {%
+    \def\vocable##1##2{\romaji{##1} & \lowercase{##1} & ##2 \\}%
+    \kanadef*{(}{\hbox{\normalfont(}}%
+    \kanadef*{n(}{\symbol{147}\hbox{\normalfont(}\pgfparserswitch{initial}}%
+    \kanadef*{N(}{\symbol{243}\hbox{\normalfont(}\pgfparserswitch{initial}}%
+    \kanadef*{)}{\hbox{\normalfont)}}%
+    \kanadef*{n)}{\symbol{147}\hbox{\normalfont)}\pgfparserswitch{initial}}%
+    \kanadef*{N)}{\symbol{243}\hbox{\normalfont)}\pgfparserswitch{initial}}%
+    \kanadef*{/}{\hbox{\normalfont/}}%
+    \kanadef*{n/}{\symbol{147}\hbox{\normalfont/}\pgfparserswitch{initial}}%
+    \kanadef*{N/}{\symbol{243}\hbox{\normalfont/}\pgfparserswitch{initial}}%
+    \protected\def\SIM{$\sim$}%
+    \protected\long\def\ignore##1{##1}%
+    \protected\long\def\red##1{\textcolor{red}{##1}}
+    \kanadef*\ignore[m]{\begingroup\normalfont##1\endgroup}%
+    \kanadef*\SIM{\hbox{\normalfont$\sim$}}%
+    \kanadefnested\red
+  }
+  {}
+
+\usepackage[margin=25mm]{geometry}
+
+\begin{document}
+\romaji{kawaii}
+
+\romaji{MAATIN:wa doitsugo hanashimasu.}
+\begin{vocables}
+\begin{tabularx}{\linewidth}{llX}
+  \toprule
+  \romaji{kana} & Romaji & Übersetzung \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  %
+  \vocable{TABERU}{Tisch}
+  \vocable{tabemasu}{essen}
+  \vocable{niku}{Fleisch}
+  \vocable{ehagaki}{Postkarte}
+  \vocable{AKUSESARII}{Accessoires, Schmuck}
+  \vocable{oshare(\red{na})}{schick, modisch}
+  \vocable{(o)miyage}{Mitbringsel, Souvenir}
+  \vocable{kasa}{Regenschirm}
+  \vocable{kutsu}{Schuhe}
+  \vocable{saifu}{Portemonnaie}
+  \vocable{tanjoubi}{Geburtstag}
+  \vocable{TIIKAPPU}{Teetasse}
+  \vocable{\ignore{\uppercase{T}}SHATSU}{T-Shirt}
+  \vocable{denshijisho}{elektronisches Wörterbuch}
+  \vocable{NOOTO}{(Notiz)heft}
+  \vocable{BAASUDEE}{Geburtstag}
+  \vocable{hana}{Blume}
+  \vocable{HANKACHI}{Taschentuch}
+  \vocable{BIDEOKAMERA}{Videokamera}
+  \vocable{fuku}{Kleidung}
+  \vocable{boushi}{Hut, Mütze}
+  \vocable{MAUSU}{(Computer)maus}
+  \vocable{agemasu}{geben, schenken}
+  \vocable{moraimasu}{bekommen}
+  \vocable{kakkoi\red{i}}{cool}
+  \vocable{hoshii}{Ich möchte $\sim$}
+  \vocable{takusan}{viel}
+  \vocable{\SIM ko}{Zählsuffix für kleine, kompakte Objekte}
+  \vocable{\SIM satsu}{Zählsuffix für gebundene Objekte}
+  \vocable{\SIM hon/pon/bon}{Zählsuffix für lange, schmale Objekte}
+  \vocable{\SIM mai}{Zählsuffix für flache Objekte}
+  \vocable{e}{Eh?}
+  \vocable{ao}{Blau}
+  \vocable{aka}{Rot}
+  \vocable{ORENJI}{Orange}
+  \vocable{kiiro}{Gelb}
+  \vocable{GUREE}{Grau}
+  \vocable{kuro}{Schwarz}
+  \vocable{shiro}{Weiß}
+  \vocable{chairo}{Braun}
+  \vocable{midori}{Grün}
+  \vocable{iro}{Farbe}
+  \vocable{asoko}{dort drüben}
+  \vocable{are}{jenes}
+  \vocable{kutsushita}{Socke, Strumpf}
+  \vocable{KOOTO}{Mantel}
+  \vocable{JIINZU}{Jeans}
+  \vocable{JAKETTO}{Jacke}
+  \vocable{SUUTSU}{Anzug, Kostüm}
+  \vocable{SUKAATO}{Rock}
+  \vocable{SUKAAFU}{Halstuch}
+  \vocable{soko}{da}
+  \vocable{sore}{das da}
+  \vocable{ten'in}{Verkäufer}
+  \vocable{dore}{welches}
+  \vocable{NEKUTAI}{Krawatte}
+  \vocable{PANTSU}{Hose}
+  \vocable{PINKU}{Rosa}
+  \vocable{hoka}{Andere}
+  \vocable{WANPIISU}{Kleid}
+  \vocable{kimasu}{anziehen}
+  \vocable{niaimasu}{gut stehen, gut passen}
+  \vocable{hakimasu}{anziehen}
+  \vocable{yoku}{gut}
+  \vocable{aa}{Ach?, Ach so.}
+  \vocable{ano}{jenes \ldots}
+  \vocable{sono}{das \ldots}
+  \vocable{irasshaimasu}{Willkommen}
+  \vocable{kite mite mo ii desu ka.}{Kann ich das anprobieren?}
+  \vocable{kudasai}{Bitte geben Sie mir $\sim$, bitte}
+  \vocable{jaa, ii desu}{Na, dann}
+  \vocable{akihabara}{Akihabara}
+  \vocable{are}{jenes}
+  \vocable{ginza}{Ginza}
+  \vocable{shibuya}{Shibuya}
+  \vocable{shuriken}{Wurfstern}
+  \vocable{hashioki}{Essstäbchen-Ablage}
+  \vocable{harajuku}{Harajuku}
+  \vocable{mimikaki}{Ohrkratzer}
+  \vocable{RISUTO}{Liste}
+  \vocable{kaemasu (kaimasu)}{kaufen können (kaufen)}
+  \vocable{omoshiroi}{interessant}
+  \vocable{hoshii}{möchten}
+  \vocable{nihonteki(\red{na})}{traditionell japanish}
+  \vocable{koo yatte}{auf diese Weise}
+  \vocable{kutsu}{Schuhe}
+  \vocable{SAIZU}{Größe}
+  \vocable{SHATSU}{Hemd}
+  \vocable{sen/zen}{Tausend}
+  \vocable{man}{Zehntausend}
+  \vocable{BAGGU}{Tasche}
+  \vocable{takai}{teuer}
+  \vocable{maamaa}{geht so}
+  \vocable{motto}{noch, auch etwas}
+  \vocable{jaa}{na dann}
+  \vocable{waa}{Uah!}
+  \vocable{ARUBAITO}{Teilzeitjob}
+  \vocable{(o)sake}{Sake}
+  \vocable{KARAOKE}{Karaoke}
+  \vocable{KOOHIISHOPPU}{Café}
+  \vocable{sentaku}{Waschen (Nomen)}
+  \vocable{souji}{Putzen (Nomen)}
+  \vocable{BIITORUZU}{Die Beatles}
+  \vocable{utaimasu}{}
+  \vocable{tsukaremasu}{}
+  \vocable{ureshi\red{i}}{froh, erfreut, glücklich}
+  \vocable{oo\red{i}}{viel, voll}
+  \vocable{subarashi\red{i}}{großartig, toll, gut}
+  \vocable{tanoshi\red{i}}{lustig, spaßig}
+  \vocable{taihen(\red{na})}{furchtbar}
+  \vocable{dou}{wie}
+  \vocable{mata}{wieder, noch einmal}
+  \vocable{dou deshita ka.}{Wie war es?}
+  \vocable{dokonimo ikimasen deshita.}{Ich bin nirgendwo hingegangen.}
+  \vocable{nanimo shimasen deshita.}{Ich habe nichts gemacht.}
+  \vocable{itsuka}{irgendwann}
+  \vocable{IBENTO}{Veranstaltung}
+  \vocable{KARENDAA}{Kalender}
+  \vocable{kyuu}{heute}
+  \vocable{kyonen}{letztes Jahr}
+  \vocable{GOORUDEN WIIKU}{goldene Woche}
+  \vocable{kokusai}{international}
+  \vocable{kotoshi}{dieses Jahr}
+  \vocable{kongetsu}{diesen Monat}
+  \vocable{KONTESUTO}{Wettbewert}
+  \vocable{shi}{4}
+  \vocable{shiai}{Spiel, Wettkampf}
+  \vocable{\ignore{J}POPPU}{J-Pop}
+  \vocable{SUKEJUURU}{Terminplan, Zeitplan}
+  \vocable{sengetsu}{letzten Monat}
+  \vocable{taiko}{Trommel}
+  \vocable{CHIKETTO}{Ticket, Kart}
+  \vocable{tsuitachi}{der erste Tag}
+  \vocable{tooka}{der zehnte Tag}
+  \vocable{nana}{7}
+  \vocable{nanoka}{der siebte Tag}
+  \vocable{PAAKU}{Park}
+  \vocable{hatsuka}{der zwanzigste Tag}
+  \vocable{futsuka}{der zweite Tag}
+  \vocable{HOORU}{Halle}
+  \vocable{POSUTAA}{Poster}
+  \vocable{bonsai}{künstlicher Miniaturbaum}
+  \vocable{matsuri}{Festival}
+  \vocable{mikka}{der dritte Tag}
+  \vocable{minna}{alle}
+  \vocable{muika}{der sechte Tag}
+  \vocable{youka}{der achte Tag}
+  \vocable{yokka}{der vierte Tag}
+  \vocable{raigetsu}{nächsten Monat}
+  \vocable{rainen}{nächstes Jahr}
+  \vocable{kaimasu}{kaufen}
+  \vocable{iroiro(\red{na})}{verschieden}
+  \vocable{tabun}{wahrscheinlich}
+  \vocable{chotto}{ein bisschen}
+  \vocable{\SIM nichi}{$\sim$ Tage}
+  \vocable{\SIM nen}{$\sim$ Jahre}
+  \vocable{hee}{ach, wirklich}
+  \vocable{issho ni}{zusammen}
+  \vocable{ii desu ne}{Gerne.}
+  \vocable{ogenki desu ka.}{Wie geht es Ihnen?}
+  \vocable{ashita}{morgen}
+  \vocable{INTAANETTO}{Internet}
+  \vocable{kaimono}{Einkauf}
+  \vocable{kayoubi}{Dienstag}
+  \vocable{kinou}{gestern}
+  \vocable{kin'youbi}{Freitag}
+  \vocable{getsuyoubi}{Montag}
+  \vocable{KONSAATO}{Konzert}
+  \vocable{konshuu}{diese Woche}
+  \vocable{zangyou}{Überstunden}
+  \vocable{shokuji}{Mahlzeit, essen}
+  \vocable{suiyoubi}{Mittwoch}
+  \vocable{senshuu}{letzte Woche}
+  \vocable{dame(\red{na})}{nutzlos}
+  \vocable{TENISU}{Tennis}
+  \vocable{doyoubi}{Samstag}
+  \vocable{nanjikan}{wie viele Stunden}
+  \vocable{nichiyoubi}{Sonntag}
+  \vocable{bijutsukan}{Kunstmuseum}
+  \vocable{byouin}{Krankenhaus}
+  \vocable{mokuyoubi}{Donnerstag}
+  \vocable{yotei}{Termin, Plan}
+  \vocable{raishuu}{nächste Woche}
+  \vocable{kimasu}{kommen}
+  \vocable{zangyoushimasu}{Überstunden machen}
+  \vocable{daijoubu(\red{na})}{in Ordnung sein}
+  \vocable{dou}{wie}
+  \vocable{tokidoki}{manchmal}
+  \vocable{\SIM gatsu}{$\sim$ Monat}
+  \vocable{\SIM jikan}{$\sim$ Stunde}
+  \vocable{\SIM gurai}{gegen}
+  \vocable{AKUSHON}{Action}
+  \vocable{ANIME}{Zeichentrickfilm}
+  \vocable{\ignore{\uppercase{E}}MEERU}{E-Mail}
+  \vocable{e}{Gemälde, Bild}
+  \vocable{eiga}{Film}
+  \vocable{eki}{Bahnhof}
+  \vocable{\ignore{\uppercase{SF}}}{Science-Fiction}
+  \vocable{(o)tera}{Tempel}
+  \vocable{gaikokugo}{Fremdsprache}
+  \vocable{GITAA}{Gitarre}
+  \vocable{KURASHIKKU}{klassische Musik}
+  \vocable{KOMEDI}{Komödie}
+  \vocable{SAKKAA}{Fußball}
+  \vocable{jazu}{Jazz}
+  \vocable{juudou}{Judo}
+  \vocable{shumi}{Hobby}
+  \vocable{shousetsu}{Roman}
+  \vocable{SUPEINgo}{Spanisch}
+  \vocable{SUPOOTSU}{Sport}
+  \vocable{sumou}{Sumo}
+  \vocable{DANZU}{Tanz}
+  \vocable{dokusho}{Lesen}
+  \vocable{POPPUSU}{Popmusik}
+  \vocable{HORAA}{Horror}
+  \vocable{yakyuu}{Baseball}
+  \vocable{ren'ai}{Liebe}
+  \vocable{ROKKU}{Rockmusik}
+  \vocable{iimasu}{sagen}
+  \vocable{e:o kakimasu}{ein Bild malen}
+  \vocable{shashin:o torimasu}{fotografieren}
+  \vocable{tomodachi ni narimasu}{Freunde werden}
+  \vocable{hanashimasu}{sprechen}
+  \vocable{yukkurishimasu}{sich entspannen}
+  \vocable{daisuki(\red{na})}{lieben als Adjektiv}
+  \vocable{zenzen}{überhaupt nicht}
+  \vocable{donna}{was für ein, welches}
+  \vocable{ikura}{wie teuer}
+  \vocable{untenshu}{Fahrer}
+  \vocable{kita}{Norden}
+  \vocable{kita guchi}{Nordausgang}
+  \vocable{nishi}{Westen}
+  \vocable{nishi guchi}{Westausgang}
+  \vocable{higashi}{Osten}
+  \vocable{higashi guchi}{Ostausgang}
+  \vocable{minami}{Süden}
+  \vocable{minami guchi}{Südausgang}
+  \vocable{kyaku}{Fahrgast, Kunde}
+  \vocable{kuukou}{Flughafen}
+  \vocable{kuruma}{Auto}
+  \vocable{koko}{hier}
+  \vocable{jitensha}{Fahrrad}
+  \vocable{sen/zen}{tausend}
+  \vocable{chikatetsu}{U-Bahn}
+  \vocable{densha}{Zug}
+  \vocable{nimotsu}{Gepäck}
+  \vocable{noriba}{Haltestelle}
+  \vocable{BAIKU}{Motorrad, Mofa}
+  \vocable{BASU}{Bus}
+  \vocable{BASUtei}{Bushaltestelle}
+  \vocable{hikouki}{Flugzeug}
+  \vocable{hito}{Person, Mensch}
+  \vocable{hyaku/pyaku/byaku}{hundert}
+  \vocable{fuben(na)}{unpraktisch}
+  \vocable{benri(na)}{praktisch}
+  \vocable{MEERU}{E-Mail}
+  \vocable{raku(na)}{leicht, angenehm}
+  \vocable{aimasu}{treffen}
+  \vocable{orimasu}{aussteigen}
+  \vocable{tsukaremasu}{erschöpft werden}
+  \vocable{norimasu}{einsteigen}
+  \vocable{chikai}{nah}
+  \vocable{tooi}{weit entfernt}
+  \vocable{hajimete}{zum ersten Mal}
+  \vocable{soshite}{und, dann}
+\end{tabularx}%
+\end{vocables}
+\end{document}
